@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>RVG Gateway</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+:root{
+  --bg:#eef1fa; --card:#ffffff; --text:#1e2438; --muted:#7b849e;
+  --primary:#2f6bff; --primary-soft:#e9efff;
+  --green:#16a34a; --green-soft:#e6f6ec;
+  --purple:#7c3aed; --purple-soft:#f1e9fe;
+  --border:#e6e9f4; --shadow:0 8px 24px rgba(30,40,90,.07);
+}
+[data-theme=dark]{
+  --bg:#0f1420; --card:#171e2e; --text:#e8ecf7; --muted:#8f97b0;
+  --primary:#5b8cff; --primary-soft:#1c2740;
+  --green:#34d399; --green-soft:#12301f;
+  --purple:#a78bfa; --purple-soft:#241a3d;
+  --border:#232c44; --shadow:0 8px 24px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box; margin:0; padding:0}
+html,body{height:100%}
+body{font-family:'Vazirmatn',Tahoma,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; transition:background .3s,color .3s;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px)}
+button{font-family:inherit; cursor:pointer; border:none; background:none; color:inherit}
+
+.topbar{position:sticky; top:0; z-index:50; display:flex; align-items:center; justify-content:space-between;
+  padding:calc(12px + env(safe-area-inset-top,0px)) 16px 12px; background:var(--card); box-shadow:var(--shadow)}
+.brand{display:flex; align-items:center; gap:10px}
+.logo{width:42px; height:42px; border-radius:12px; display:grid; place-items:center;
+  background:linear-gradient(135deg,#2f6bff,#7c3aed); color:#fff; font-weight:800; font-size:13px}
+.title{font-weight:800; font-size:18px}
+.actions{display:flex; gap:10px}
+.icon-btn{width:44px; height:44px; border-radius:12px; background:var(--primary-soft); display:grid; place-items:center; color:var(--primary)}
+.icon-btn svg{width:22px; height:22px}
+
+.overlay{position:fixed; inset:0; background:rgba(0,0,0,.4); opacity:0; pointer-events:none; transition:.3s; z-index:90}
+.overlay.show{opacity:1; pointer-events:auto}
+.drawer{position:fixed; top:0; right:-290px; width:280px; height:100vh; background:var(--card); z-index:100;
+  transition:right .3s; padding:20px; padding-top:calc(20px + env(safe-area-inset-top,0px)); box-shadow:var(--shadow)}
+.drawer.show{right:0}
+.drawer h3{margin-bottom:16px; font-size:16px}
+.drawer nav{display:flex; flex-direction:column; gap:6px}
+.drawer nav button{display:flex; align-items:center; gap:10px; padding:12px 14px; border-radius:12px; font-size:15px; text-align:right; width:100%}
+.drawer nav button:hover,.drawer nav button.active{background:var(--primary-soft); color:var(--primary); font-weight:700}
+.drawer nav svg{width:20px; height:20px; flex-shrink:0}
+
+main{max-width:1100px; margin:0 auto; padding:20px 16px 60px}
+.view{display:none}
+.view.active{display:block; animation:fade .25s}
+@keyframes fade{from{opacity:0; transform:translateY(6px)} to{opacity:1; transform:none}}
+
+.dash-head{display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:6px}
+.dash-head .d-title{display:flex; align-items:center; gap:8px; font-size:22px; font-weight:800}
+.badge{display:flex; align-items:center; gap:6px; background:var(--green-soft); color:var(--green);
+  padding:6px 14px; border-radius:999px; font-size:14px; font-weight:700}
+.badge .dot{width:8px; height:8px; border-radius:50%; background:var(--green); animation:pulse 1.5s infinite}
+@keyframes pulse{50%{opacity:.4}}
+.chip{background:var(--primary-soft); color:var(--primary); padding:6px 14px; border-radius:999px; font-size:14px; font-weight:700; direction:ltr}
+.refresh{margin-right:auto; display:flex; align-items:center; gap:8px; background:var(--primary); color:#fff;
+  padding:10px 20px; border-radius:14px; font-weight:700; font-size:15px; box-shadow:0 4px 12px rgba(47,107,255,.35)}
+.refresh svg{width:18px; height:18px}
+.last-update{color:var(--muted); font-size:13px; margin-bottom:20px}
+
+.grid{display:grid; grid-template-columns:1fr; gap:18px}
+@media(min-width:640px){.grid{grid-template-columns:1fr 1fr}}
+@media(min-width:1024px){.grid{grid-template-columns:repeat(4,1fr)}}
+.card{background:var(--card); border-radius:22px; padding:20px; box-shadow:var(--shadow); border:1px solid var(--border)}
+.card .top{display:flex; align-items:flex-start; min-height:70px; margin-bottom:14px}
+.tile{width:52px; height:52px; border-radius:14px; display:grid; place-items:center; margin-right:auto}
+.tile svg{width:26px; height:26px}
+.tile.blue{background:var(--primary-soft); color:var(--primary)}
+.tile.green{background:var(--green-soft); color:var(--green)}
+.tile.purple{background:var(--purple-soft); color:var(--purple)}
+.card .label{color:var(--muted); font-size:14px; font-weight:600; margin-bottom:6px}
+.card .value{font-size:34px; font-weight:800; line-height:1.1}
+.card .value small{font-size:16px; font-weight:700; color:var(--muted)}
+.card .sub{display:flex; align-items:center; gap:6px; color:var(--muted); font-size:12.5px; margin-top:6px}
+.card .sub .dot{width:7px; height:7px; border-radius:50%; background:var(--green)}
+
+.sec-head{display:flex; align-items:center; gap:10px; margin-bottom:18px; flex-wrap:wrap}
+.sec-head h2{font-size:20px; font-weight:800}
+.btn{display:inline-flex; align-items:center; gap:8px; padding:10px 18px; border-radius:13px; font-weight:700; font-size:14px}
+.btn.primary{background:var(--primary); color:#fff}
+.btn.soft{background:var(--primary-soft); color:var(--primary)}
+.btn.danger{background:#fee2e2; color:#dc2626}
+[data-theme=dark] .btn.danger{background:#3b1a1a; color:#f87171}
+.btn svg{width:17px; height:17px}
+
+.item{background:var(--card); border:1px solid var(--border); border-radius:18px; padding:16px; margin-bottom:14px; box-shadow:var(--shadow)}
+.item-head{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+.item-head .name{font-weight:800; font-size:16px}
+.tag{font-size:11.5px; font-weight:700; padding:4px 10px; border-radius:999px; background:var(--primary-soft); color:var(--primary)}
+.tag.green{background:var(--green-soft); color:var(--green)}
+.tag.gray{background:var(--border); color:var(--muted)}
+.item .meta{color:var(--muted); font-size:13px; margin:8px 0 12px; direction:ltr; text-align:right; word-break:break-all}
+.item-actions{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
+.switch{position:relative; width:44px; height:24px; margin-right:auto; flex-shrink:0}
+.switch input{opacity:0; width:0; height:0}
+.slider{position:absolute; inset:0; background:var(--border); border-radius:999px; transition:.2s}
+.slider:before{content:''; position:absolute; width:18px; height:18px; border-radius:50%; background:#fff; top:3px; right:3px; transition:.2s; box-shadow:0 1px 4px rgba(0,0,0,.25)}
+input:checked+.slider{background:var(--green)}
+input:checked+.slider:before{transform:translateX(-20px)}
+.sub-box{background:var(--bg); border:1px dashed var(--border); border-radius:12px; padding:10px; font-size:12px; direction:ltr; text-align:left; word-break:break-all; margin:10px 0; color:var(--muted)}
+.empty{text-align:center; color:var(--muted); padding:50px 20px; background:var(--card); border-radius:18px; border:1px dashed var(--border)}
+
+.modal{position:fixed; inset:0; z-index:200; display:none; align-items:center; justify-content:center; padding:16px}
+.modal.show{display:flex}
+.modal .back{position:absolute; inset:0; background:rgba(0,0,0,.5)}
+.modal .box{position:relative; background:var(--card); border-radius:20px; padding:22px; width:100%; max-width:480px; max-height:88vh; overflow:auto; animation:fade .2s}
+.modal h3{margin-bottom:16px; font-size:18px}
+.field{margin-bottom:13px}
+.field label{display:block; font-size:13px; font-weight:700; margin-bottom:6px; color:var(--muted)}
+.field input,.field select{width:100%; padding:11px 13px; border-radius:12px; border:1px solid var(--border); background:var(--bg); color:var(--text); font-family:inherit; font-size:14px}
+.field input:focus,.field select:focus{outline:2px solid var(--primary); border-color:transparent}
+.row2{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+.check{display:flex; align-items:center; gap:8px; font-size:14px; margin-bottom:10px; cursor:pointer}
+.check input{width:17px; height:17px; accent-color:var(--primary)}
+.modal .foot{display:flex; gap:10px; margin-top:6px}
+#qrBox{display:grid; place-items:center; padding:10px; background:#fff; border-radius:14px; margin-bottom:12px}
+#qrBox img,#qrBox canvas{width:200px!important; height:200px!important}
+.grp-check{display:flex; align-items:center; gap:8px; padding:8px 4px; font-size:14px}
+.grp-check input{width:17px; height:17px; accent-color:var(--primary)}
+
+.toast{position:fixed; bottom:calc(24px + env(safe-area-inset-bottom,0px)); right:50%; transform:translate(50%,80px); background:var(--text); color:var(--bg);
+  padding:12px 22px; border-radius:14px; font-size:14px; font-weight:700; z-index:300; transition:.3s; opacity:0}
+.toast.show{transform:translate(50%,0); opacity:1}
+
+.set-row{display:flex; align-items:center; gap:10px; padding:14px 0; border-bottom:1px solid var(--border)}
+.set-row:last-child{border:none}
+.set-row .info{flex:1}
+.set-row .info b{display:block; font-size:15px}
+.set-row .info span{font-size:12.5px; color:var(--muted)}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="logo">RVG</div>
+    <div class="title">RVG Gateway</div>
+  </div>
+  <div class="actions">
+    <button class="icon-btn" id="btnTheme"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></svg></button>
+    <button class="icon-btn" id="btnMenu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
+  </div>
+</header>
+
+<div class="overlay" id="overlay"></div>
+<aside class="drawer" id="drawer">
+  <h3>منوی RVG Gateway</h3>
+  <nav id="nav">
+    <button data-view="dashboard" class="active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>داشبورد</button>
+    <button data-view="configs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>کانفیگ‌ها</button>
+    <button data-view="groups"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="8" y="8" width="13" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></svg>گروه‌های ساب</button>
+    <button data-view="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.9 2.9l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.9-2.9l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.9-2.9l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.9 2.9l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>تنظیمات</button>
+  </nav>
+</aside>
+
+<main>
+  <section class="view active" id="view-dashboard">
+    <div class="dash-head">
+      <div class="d-title">داشبورد</div>
+      <span class="badge"><span class="dot"></span>فعال</span>
+      <span class="chip" id="uptimeChip">مدت فعالیت · 00:00:00</span>
+      <button class="refresh" id="btnRefresh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg>رفرش</button>
+    </div>
+    <div class="last-update">آخرین بروزرسانی: <span id="lastUpdate">-</span></div>
+    <div class="grid">
+      <div class="card">
+        <div class="top"><div class="tile blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg></div></div>
+        <div class="label">اتصالات فعال</div>
+        <div class="value" id="vConn">0</div>
+        <div class="sub"><span class="dot"></span>زنده WebSocket / XHTTP</div>
+      </div>
+      <div class="card">
+        <div class="top"><div class="tile blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3l4 4-4 4"/><path d="M21 7H8"/><path d="M7 21l-4-4 4-4"/><path d="M3 17h13"/></svg></div></div>
+        <div class="label">کل ترافیک</div>
+        <div class="value"><span id="vTraffic">0.0</span> <small>MB</small></div>
+        <div class="sub">از راه‌اندازی</div>
+      </div>
+      <div class="card">
+        <div class="top"><div class="tile green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg></div></div>
+        <div class="label">کانفیگ فعال</div>
+        <div class="value" id="vCfg">0</div>
+        <div class="sub">از <span id="vCfgTotal">0</span> کانفیگ</div>
+      </div>
+      <div class="card">
+        <div class="top"><div class="tile purple"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="8" y="8" width="13" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></svg></div></div>
+        <div class="label">گروه‌های ساب</div>
+        <div class="value" id="vGrp">0</div>
+        <div class="sub">اشتراک‌ساز</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="view" id="view-configs">
+    <div class="sec-head">
+      <h2>کانفیگ‌ها</h2>
+      <button class="btn primary" style="margin-right:auto" onclick="openCfgModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>کانفیگ جدید</button>
+    </div>
+    <div id="cfgList"></div>
+  </section>
+
+  <section class="view" id="view-groups">
+    <div class="sec-head">
+      <h2>گروه‌های ساب</h2>
+      <button class="btn primary" style="margin-right:auto" onclick="openGrpModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>گروه جدید</button>
+    </div>
+    <div id="grpList"></div>
+  </section>
+
+  <section class="view" id="view-settings">
+    <div class="sec-head"><h2>تنظیمات</h2></div>
+    <div class="item">
+      <div class="set-row">
+        <div class="info"><b>شبیه‌سازی آمار زنده</b><span>اتصالات و ترافیک به‌صورت آزمایشی به‌روزرسانی می‌شوند</span></div>
+        <label class="switch"><input type="checkbox" id="setSim" onchange="toggleSim(this.checked)"><span class="slider"></span></label>
+      </div>
+      <div class="set-row">
+        <div class="info"><b>ریست تایمر فعالیت</b><span>شمارنده فعال بودن از صفر شروع می‌شود</span></div>
+        <button class="btn soft" onclick="resetUptime()">ریست</button>
+      </div>
+      <div class="set-row">
+        <div class="info"><b>ریست ترافیک</b><span>شمارنده ترافیک به 0.1MB برمی‌گردد</span></div>
+        <button class="btn soft" onclick="resetTraffic()">ریست</button>
+      </div>
+      <div class="set-row">
+        <div class="info"><b>پاک کردن همه داده‌ها</b><span>حذف کامل کانفیگ‌ها و گروه‌ها</span></div>
+        <button class="btn danger" onclick="wipeAll()">پاک کردن</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="modal" id="cfgModal">
+  <div class="back" onclick="closeModal('cfgModal')"></div>
+  <div class="box">
+    <h3 id="cfgModalTitle">کانفیگ جدید</h3>
+    <div class="field"><label>نام (Remark)</label><input id="cf_name" placeholder="مثلاً سرور آلمان ۱"></div>
+    <div class="row2">
+      <div class="field"><label>پروتکل</label>
+        <select id="cf_proto">
+          <option value="vless">VLESS</option>
+          <option value="vmess">VMess</option>
+          <option value="trojan">Trojan</option>
+          <option value="ss">Shadowsocks</option>
+        </select>
+      </div>
+      <div class="field"><label>ترنسپورت</label>
+        <select id="cf_net">
+          <option value="ws">WebSocket</option>
+          <option value="xhttp">XHTTP</option>
+          <option value="grpc">gRPC</option>
+          <option value="tcp">TCP</option>
+        </select>
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>آدرس سرور</label><input id="cf_addr" placeholder="example.com" dir="ltr"></div>
+      <div class="field"><label>پورت</label><input id="cf_port" type="number" placeholder="443" dir="ltr"></div>
+    </div>
+    <div class="field"><label>UUID / پسورد</label>
+      <div style="display:flex; gap:8px">
+        <input id="cf_uuid" dir="ltr" style="flex:1">
+        <button class="btn soft" onclick="genUuid()" type="button">تولید</button>
+      </div>
+    </div>
+    <div class="field"><label>Path (اختیاری)</label><input id="cf_path" placeholder="/ws" dir="ltr"></div>
+    <label class="check"><input type="checkbox" id="cf_tls" checked> TLS فعال</label>
+    <div class="field"><label>SNI (اختیاری)</label><input id="cf_sni" dir="ltr"></div>
+    <div class="foot">
+      <button class="btn primary" onclick="saveCfg()">ذخیره</button>
+      <button class="btn soft" onclick="closeModal('cfgModal')">انصراف</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="grpModal">
+  <div class="back" onclick="closeModal('grpModal')"></div>
+  <div class="box">
+    <h3 id="grpModalTitle">گروه جدید</h3>
+    <div class="field"><label>نام گروه</label><input id="gf_name" placeholder="مثلاً ساب اصلی"></div>
+    <div class="field"><label>انتخاب کانفیگ‌ها</label><div id="gf_cfgs" style="max-height:180px; overflow:auto"></div></div>
+    <div class="foot">
+      <button class="btn primary" onclick="saveGrp()">ذخیره</button>
+      <button class="btn soft" onclick="closeModal('grpModal')">انصراف</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="qrModal">
+  <div class="back" onclick="closeModal('qrModal')"></div>
+  <div class="box">
+    <h3>لینک کانفیگ</h3>
+    <div id="qrBox"></div>
+    <div class="sub-box" id="qrLink"></div>
+    <div class="foot">
+      <button class="btn primary" onclick="copyQr()">کپی لینک</button>
+      <button class="btn soft" onclick="closeModal('qrModal')">بستن</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="subModal">
+  <div class="back" onclick="closeModal('subModal')"></div>
+  <div class="box">
+    <h3 id="subModalTitle">لینک اشتراک</h3>
+    <div class="sub-box" id="subLink"></div>
+    <div class="foot">
+      <button class="btn primary" onclick="copySub()">کپی لینک ساب</button>
+      <button class="btn soft" onclick="closeModal('subModal')">بستن</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================= State ================= */
+let state = { configs:[], groups:[], uptime:0, traffic:0.1, sim:false, connections:0 };
+let editCfgId = null, editGrpId = null, currentLink = '', currentSubLink = '';
+let simTimer = null;
+
+function save(){
+  try{ localStorage.setItem('rvg', JSON.stringify(state)); }catch(e){}
+}
+function load(){
+  try{
+    const d = JSON.parse(localStorage.getItem('rvg'));
+    if(d) state = Object.assign(state, d);
+  }catch(e){}
+}
+
+/* ================= Helpers ================= */
+const $ = id => document.getElementById(id);
+function toast(msg){
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._h); t._h = setTimeout(()=>t.classList.remove('show'), 2200);
+}
+function copyTxt(txt){
+  if(navigator.clipboard){ navigator.clipboard.writeText(txt).then(()=>toast('کپی شد ✅')).catch(()=>fallbackCopy(txt)); }
+  else fallbackCopy(txt);
+}
+function fallbackCopy(txt){
+  const ta = document.createElement('textarea'); ta.value = txt;
+  document.body.appendChild(ta); ta.select();
+  try{ document.execCommand('copy'); toast('کپی شد ✅'); }catch(e){}
+  ta.remove();
+}
+function b64(str){ return btoa(unescape(encodeURIComponent(str))); }
+function ub64(str){ try{ return decodeURIComponent(escape(atob(str))); }catch(e){ return ''; } }
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
+function genUuid(){
+  const h = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx';
+  $('cf_uuid').value = h.replace(/[xy]/g, c=>{
+    const r = Math.random()*16|0, v = c=='x' ? r : (r&0x3|0x8);
+    return v.toString(16);
+  });
+}
+function fmtTime(s){
+  const h = String(Math.floor(s/3600)).padStart(2,'0');
+  const m = String(Math.floor(s%3600/60)).padStart(2,'0');
+  const x = String(Math.floor(s%60)).padStart(2,'0');
+  return `${h}:${m}:${x}`;
+}
+
+/* ================= لینک‌ساز کانفیگ ================= */
+function buildLink(c){
+  const tls = c.tls ? 'tls' : 'none';
+  const params = `type=${c.net}&security=${tls}` +
+    (c.sni ? `&sni=${c.sni}&host=${c.sni}` : '') +
+    (c.path ? `&path=${encodeURIComponent(c.path)}` : '') +
+    (c.net==='grpc' ? `&serviceName=${c.path||''}&mode=gun` : '');
+  const name = encodeURIComponent(c.name);
+
+  if(c.proto==='vmess'){
+    return 'vmess://' + b64(JSON.stringify({
+      v:'2', ps:c.name, add:c.addr, port:String(c.port), id:c.uuid, aid:'0',
+      net:c.net, type:'none', host:c.sni||'', path:c.path||'',
+      tls:c.tls?'tls':'', sni:c.sni||''
+    }));
+  }
+  if(c.proto==='vless'){
+    return `vless://${c.uuid}@${c.addr}:${c.port}?${params}#${name}`;
+  }
+  if(c.proto==='trojan'){
+    return `trojan://${c.uuid}@${c.addr}:${c.port}?${params}#${name}`;
+  }
+  if(c.proto==='ss'){
+    const method = 'chacha20-ietf-poly1305';
+    const userinfo = b64(`${method}:${c.uuid}`);
+    return `ss://${userinfo}@${c.addr}:${c.port}#${name}`;
+  }
+  return '';
+}
+
+/* ================= رندر ================= */
+function render(){
+  $('vConn').textContent = state.connections;
+  $('vTraffic').textContent = state.traffic.toFixed(1);
+  const active = state.configs.filter(c=>c.active).length;
+  $('vCfg').textContent = active;
+  $('vCfgTotal').textContent = state.configs.length;
+  $('vGrp').textContent = state.groups.length;
+  $('uptimeChip').textContent = 'مدت فعالیت · ' + fmtTime(state.uptime);
+  $('lastUpdate').textContent = new Date().toLocaleString('fa-IR');
+  $('setSim').checked = state.sim;
+  renderCfgList();
+  renderGrpList();
+}
+
+function renderCfgList(){
+  const box = $('cfgList');
+  if(!state.configs.length){
+    box.innerHTML = '<div class="empty">هنوز کانفیگی اضافه نکرده‌اید</div>';
+    return;
+  }
+  box.innerHTML = state.configs.map(c=>`
+    <div class="item">
+      <div class="item-head">
+        <span class="name">${c.name}</span>
+        <span class="tag">${c.proto.toUpperCase()}</span>
+        <span class="tag gray">${c.net}</span>
+        <label class="switch"><input type="checkbox" ${c.active?'checked':''} onchange="toggleCfg('${c.id}',this.checked)"><span class="slider"></span></label>
+      </div>
+      <div class="meta">${c.addr}:${c.port}</div>
+      <div class="item-actions">
+        <button class="btn soft" onclick="showQr('${c.id}')">لینک / QR</button>
+        <button class="btn soft" onclick="openCfgModal('${c.id}')">ویرایش</button>
+        <button class="btn danger" onclick="deleteCfg('${c.id}')">حذف</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderGrpList(){
+  const box = $('grpList');
+  if(!state.groups.length){
+    box.innerHTML = '<div class="empty">هنوز گروهی نساخته‌اید</div>';
+    return;
+  }
+  box.innerHTML = state.groups.map(g=>`
+    <div class="item">
+      <div class="item-head">
+        <span class="name">${g.name}</span>
+        <span class="tag green">${g.cfgIds.length} کانفیگ</span>
+      </div>
+      <div class="item-actions">
+        <button class="btn soft" onclick="showSub('${g.id}')">لینک ساب</button>
+        <button class="btn soft" onclick="openGrpModal('${g.id}')">ویرایش</button>
+        <button class="btn danger" onclick="deleteGrp('${g.id}')">حذف</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+/* ================= کانفیگ CRUD ================= */
+function openCfgModal(id){
+  editCfgId = id || null;
+  $('cfgModalTitle').textContent = id ? 'ویرایش کانفیگ' : 'کانفیگ جدید';
+  if(id){
+    const c = state.configs.find(x=>x.id===id);
+    $('cf_name').value = c.name; $('cf_proto').value = c.proto; $('cf_net').value = c.net;
+    $('cf_addr').value = c.addr; $('cf_port').value = c.port; $('cf_uuid').value = c.uuid;
+    $('cf_path').value = c.path||''; $('cf_tls').checked = c.tls; $('cf_sni').value = c.sni||'';
+  }else{
+    ['cf_name','cf_addr','cf_port','cf_uuid','cf_path','cf_sni'].forEach(i=>$(i).value='');
+    $('cf_proto').value='vless'; $('cf_net').value='ws'; $('cf_tls').checked = true;
+  }
+  $('cfgModal').classList.add('show');
+}
+function saveCfg(){
+  const name = $('cf_name').value.trim();
+  const addr = $('cf_addr').value.trim();
+  const port = parseInt($('cf_port').value) || 443;
+  const uuidVal = $('cf_uuid').value.trim();
+  if(!name || !addr || !uuidVal){ toast('نام، آدرس و UUID/پسورد الزامی است'); return; }
+  const data = {
+    name, proto: $('cf_proto').value, net: $('cf_net').value, addr, port,
+    uuid: uuidVal, path: $('cf_path').value.trim(), tls: $('cf_tls').checked,
+    sni: $('cf_sni').value.trim()
+  };
+  if(editCfgId){
+    const c = state.configs.find(x=>x.id===editCfgId);
+    Object.assign(c, data);
+  }else{
+    state.configs.push(Object.assign({ id: uid(), active:true }, data));
+  }
+  save(); render(); closeModal('cfgModal'); toast('ذخیره شد ✅');
+}
+function toggleCfg(id, val){
+  const c = state.configs.find(x=>x.id===id);
+  if(c){ c.active = val; save(); render(); }
+}
+function deleteCfg(id){
+  state.configs = state.configs.filter(x=>x.id!==id);
+  state.groups.forEach(g=> g.cfgIds = g.cfgIds.filter(cid=>cid!==id));
+  save(); render(); toast('حذف شد');
+}
+function showQr(id){
+  const c = state.configs.find(x=>x.id===id);
+  currentLink = buildLink(c);
+  $('qrLink').textContent = currentLink;
+  const box = $('qrBox'); box.innerHTML = '';
+  if(window.QRCode){ new QRCode(box, { text: currentLink, width:200, height:200 }); }
+  $('qrModal').classList.add('show');
+}
+function copyQr(){ copyTxt(currentLink); }
+
+/* ================= گروه CRUD ================= */
+function openGrpModal(id){
+  editGrpId = id || null;
+  $('grpModalTitle').textContent = id ? 'ویرایش گروه' : 'گروه جدید';
+  const g = id ? state.groups.find(x=>x.id===id) : null;
+  $('gf_name').value = g ? g.name : '';
+  const box = $('gf_cfgs');
+  if(!state.configs.length){
+    box.innerHTML = '<div class="empty" style="padding:20px">ابتدا یک کانفیگ بسازید</div>';
+  }else{
+    box.innerHTML = state.configs.map(c=>`
+      <label class="grp-check">
+        <input type="checkbox" value="${c.id}" ${g && g.cfgIds.includes(c.id) ? 'checked':''}>
+        ${c.name} <span style="color:var(--muted)">(${c.proto})</span>
+      </label>
+    `).join('');
+  }
+  $('grpModal').classList.add('show');
+}
+function saveGrp(){
+  const name = $('gf_name').value.trim();
+  if(!name){ toast('نام گروه را وارد کنید'); return; }
+  const cfgIds = Array.from($('gf_cfgs').querySelectorAll('input:checked')).map(i=>i.value);
+  if(editGrpId){
+    const g = state.groups.find(x=>x.id===editGrpId);
+    g.name = name; g.cfgIds = cfgIds;
+  }else{
+    state.groups.push({ id: uid(), name, cfgIds });
+  }
+  save(); render(); closeModal('grpModal'); toast('ذخیره شد ✅');
+}
+function deleteGrp(id){
+  state.groups = state.groups.filter(x=>x.id!==id);
+  save(); render(); toast('حذف شد');
+}
+function showSub(id){
+  const g = state.groups.find(x=>x.id===id);
+  const links = g.cfgIds.map(cid=>{
+    const c = state.configs.find(x=>x.id===cid);
+    return c ? buildLink(c) : '';
+  }).filter(Boolean);
+  currentSubLink = b64(links.join('\n'));
+  $('subModalTitle').textContent = 'لینک اشتراک — ' + g.name;
+  $('subLink').textContent = currentSubLink || '(هیچ کانفیگی در این گروه نیست)';
+  $('subModal').classList.add('show');
+}
+function copySub(){ if(currentSubLink) copyTxt(currentSubLink); }
+
+/* ================= مودال عمومی ================= */
+function closeModal(id){ $(id).classList.remove('show'); }
+
+/* ================= تنظیمات ================= */
+function toggleSim(val){
+  state.sim = val; save();
+  if(val) startSim(); else stopSim();
+}
+function startSim(){
+  stopSim();
+  simTimer = setInterval(()=>{
+    state.uptime += 1;
+    state.traffic += Math.random()*0.05;
+    state.connections = Math.max(0, state.connections + (Math.random()>0.5?1:-1));
+    if(state.connections > 40) state.connections = 40;
+    save(); render();
+  }, 1000);
+}
+function stopSim(){ if(simTimer){ clearInterval(simTimer); simTimer=null; } }
+function resetUptime(){ state.uptime = 0; save(); render(); toast('ریست شد'); }
+function resetTraffic(){ state.traffic = 0.1; save(); render(); toast('ریست شد'); }
+function wipeAll(){
+  if(!confirm('همه کانفیگ‌ها و گروه‌ها حذف شوند؟')) return;
+  state.configs = []; state.groups = [];
+  save(); render(); toast('همه‌چیز پاک شد');
+}
+
+/* ================= تم و منو ================= */
+$('btnTheme').onclick = ()=>{
+  const cur = document.documentElement.getAttribute('data-theme');
+  const next = cur==='dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  try{ localStorage.setItem('rvg_theme', next); }catch(e){}
+};
+$('btnMenu').onclick = ()=>{ $('drawer').classList.add('show'); $('overlay').classList.add('show'); };
+$('overlay').onclick = ()=>{ $('drawer').classList.remove('show'); $('overlay').classList.remove('show'); };
+document.querySelectorAll('#nav button').forEach(btn=>{
+  btn.onclick = ()=>{
+    document.querySelectorAll('#nav button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    $('view-'+btn.dataset.view).classList.add('active');
+    $('drawer').classList.remove('show'); $('overlay').classList.remove('show');
+  };
+});
+$('btnRefresh').onclick = ()=>{ render(); toast('بروزرسانی شد'); };
+
+/* ================= شروع ================= */
+try{
+  const t = localStorage.getItem('rvg_theme');
+  if(t) document.documentElement.setAttribute('data-theme', t);
+}catch(e){}
+load();
+render();
+if(state.sim) startSim();
+</script>
+</body>
+</html>
